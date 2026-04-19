@@ -1,11 +1,11 @@
-package com.gmu.pragalv.capstone.controller;
+package com.gmu.pragalv.capstone.model.controller;
 
 
-import com.gmu.pragalv.capstone.model.EventDTO;
-import com.gmu.pragalv.capstone.model.RequestDTO;
-import com.gmu.pragalv.capstone.model.ResponseDTO;
-import com.gmu.pragalv.capstone.model.SecurityResult;
-import com.gmu.pragalv.capstone.service.SecurityService;
+import com.gmu.pragalv.capstone.model.model.EventDTO;
+import com.gmu.pragalv.capstone.model.model.RequestDTO;
+import com.gmu.pragalv.capstone.model.model.ResponseDTO;
+import com.gmu.pragalv.capstone.model.model.SecurityResult;
+import com.gmu.pragalv.capstone.model.service.SecurityService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;

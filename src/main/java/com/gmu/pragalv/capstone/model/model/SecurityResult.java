@@ -1,4 +1,4 @@
-package com.gmu.pragalv.capstone.model;
+package com.gmu.pragalv.capstone.model.model;
 
 public enum SecurityResult {
 

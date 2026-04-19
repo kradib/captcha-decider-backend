@@ -1,4 +1,4 @@
-package com.gmu.pragalv.capstone.config;
+package com.gmu.pragalv.capstone.model.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

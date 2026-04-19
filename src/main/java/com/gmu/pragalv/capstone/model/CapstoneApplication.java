@@ -1,4 +1,4 @@
-package com.gmu.pragalv.capstone;
+package com.gmu.pragalv.capstone.model;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
