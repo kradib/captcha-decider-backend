@@ -50,10 +50,14 @@ public class SecurityService {
             risk.flag("Missing user-agent");
         }
 
-        if (risk.requiresCaptcha && !dto.isCaptchaCompleted()) {
-            return SecurityResult.CAPTCHA;
+        if(dto.isCaptchaCompleted()) {
+             sessions.remove(sessionId);
+             return SecurityResult.ALLOW;
         }
 
+        if (risk.requiresCaptcha) {
+            return SecurityResult.CAPTCHA;
+        }
 
         SessionAnalysisAccessor.SessionDecision decision = sessionAnalysisAccessor.analyzeSession(
                 buildSessionAnalysisPayload(dto, risk),
@@ -68,6 +72,7 @@ public class SecurityService {
             risk.requiresCaptcha = false;
         }
 
+        sessions.remove(sessionId);
         return SecurityResult.ALLOW;
     }
 
@@ -91,10 +96,6 @@ public class SecurityService {
             double mouseRate = dto.getMouseMoveCount() / seconds;
             double keyRate = dto.getKeypressCount() / seconds;
             risk.recordInteraction(dto.getMouseMoveCount(), dto.getKeypressCount(), dto.getElapsedMs(), mouseRate, keyRate);
-
-            if (mouseRate > MAX_MOUSE_RATE_PER_SEC || keyRate > MAX_KEY_RATE_PER_SEC) {
-                risk.flag("Unusually high interaction rate");
-            }
         } else {
             risk.recordInteraction(dto.getMouseMoveCount(), dto.getKeypressCount(), dto.getElapsedMs(), 0.0, 0.0);
         }
@@ -105,12 +106,10 @@ public class SecurityService {
     private Map<String, Object> buildSessionAnalysisPayload(RequestDTO dto, SessionRisk risk) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("session_duration_ms", risk.sessionDurationMs());
-        payload.put("form_fill_ms", risk.sessionDurationMs());
-        payload.put("mousemove_count", risk.totalMouseMoves);
-        payload.put("keyboard_click_count", risk.totalKeypresses);
+        payload.put("form_fill_ms", risk.formFillDurationInMs());
+        payload.put("mousemove_count", risk.averageMouseMovesPerSec());
+        payload.put("keyboard_click_count", risk.averageKeypressesPerSec());
         payload.put("avg_keydown_interval_ms", risk.keyRateToAvgKeydownIntervalMs());
-        payload.put("mouseRate", risk.lastMouseRatePerSec);
-        payload.put("keyRate", risk.lastKeyRatePerSec);
         payload.put("headless_suspected", isHeadless(dto.getUserAgent()));
         payload.put("webdriver_true", false);
         payload.put("client_webdriver", false);
@@ -148,6 +147,7 @@ public class SecurityService {
         private boolean ipChangedDuringSession;
         private Instant lastSeen;
         private final Instant startedAt;
+        private Instant firstKeystrokeAt;
         private long totalMouseMoves;
         private long totalKeypresses;
         private long totalElapsedMs;
@@ -174,6 +174,9 @@ public class SecurityService {
             this.totalElapsedMs += Math.max(0, elapsedMs);
             this.lastMouseRatePerSec = Math.max(0.0, mouseRatePerSec);
             this.lastKeyRatePerSec = Math.max(0.0, keyRatePerSec);
+            if (this.firstKeystrokeAt == null && keyRatePerSec > 0.0) {
+                this.firstKeystrokeAt = Instant.now();
+            }
         }
 
         long sessionDurationMs() {
@@ -184,11 +187,32 @@ public class SecurityService {
             return Math.max(0L, Instant.now().toEpochMilli() - this.startedAt.toEpochMilli());
         }
 
+        long formFillDurationInMs() {
+            if (this.firstKeystrokeAt == null) {
+                return 0L;
+            }
+            return Math.max(0L, Instant.now().toEpochMilli() - this.firstKeystrokeAt.toEpochMilli());
+        }
+
         long keyRateToAvgKeydownIntervalMs() {
             if (lastKeyRatePerSec <= 0.0) {
                 return 0L;
             }
             return (long) (1000.0 / lastKeyRatePerSec);
+        }
+
+        double averageKeypressesPerSec() {
+            if (this.totalElapsedMs <= 0L) {
+                return 0.0;
+            }
+            return this.totalKeypresses / (this.totalElapsedMs / 1000.0);
+        }
+
+        double averageMouseMovesPerSec() {
+            if (this.totalElapsedMs <= 0L) {
+                return 0.0;
+            }
+            return this.totalMouseMoves / (this.totalElapsedMs / 1000.0);
         }
     }
 
