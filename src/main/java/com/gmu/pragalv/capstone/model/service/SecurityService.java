@@ -5,6 +5,7 @@ import com.gmu.pragalv.capstone.model.model.EventDTO;
 import com.gmu.pragalv.capstone.model.model.RequestDTO;
 import com.gmu.pragalv.capstone.model.model.SecurityResult;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,10 +16,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@Slf4j
 public class SecurityService {
-
-    private static final double MAX_MOUSE_RATE_PER_SEC = 20.0; // unusually high
-    private static final double MAX_KEY_RATE_PER_SEC = 4.0;    // unusually high typing
 
     private final Map<String, SessionRisk> sessions = new ConcurrentHashMap<>();
     private final SessionAnalysisAccessor sessionAnalysisAccessor;
@@ -64,6 +63,7 @@ public class SecurityService {
                 dto.getSessionId()
         );
         if (decision != null && Boolean.TRUE.equals(decision.getCaptcha())) {
+            log.info("Captcha requested by llm successfully");
             risk.flag("External analyze_session decision");
             return SecurityResult.CAPTCHA;
         }
@@ -92,6 +92,7 @@ public class SecurityService {
         }
 
         if (dto.getElapsedMs() > 0) {
+
             double seconds = dto.getElapsedMs() / 1000.0;
             double mouseRate = dto.getMouseMoveCount() / seconds;
             double keyRate = dto.getKeypressCount() / seconds;

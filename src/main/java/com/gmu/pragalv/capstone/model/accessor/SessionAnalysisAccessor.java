@@ -30,6 +30,7 @@ public class SessionAnalysisAccessor {
     public SessionDecision analyzeSession(Map<String, Object> payload, String sessionId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        log.info("SessionAnalysisAccessor.analyzeSession payload: {}" , payload);
 
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -39,6 +40,7 @@ public class SessionAnalysisAccessor {
                     new ParameterizedTypeReference<>() {
                     }
             );
+            log.info("SessionAnalysisAccessor.analyzeSession response: {}" , response);
             Map<String, Object> body = response.getBody();
             if (body == null || !(body.get("decision") instanceof Map<?, ?> decisionMap)) {
                 return null;
