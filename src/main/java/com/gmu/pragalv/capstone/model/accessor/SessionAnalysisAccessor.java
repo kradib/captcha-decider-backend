@@ -10,21 +10,30 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Component
 @Slf4j
 public class SessionAnalysisAccessor {
 
+    private static final String DEFAULT_SESSION_ANALYSIS_URL = "http:///54.92.188.66:8000/analyze_session";
+
     private final RestTemplate restTemplate = new RestTemplate();
     private final String sessionAnalysisUrl;
 
-    public SessionAnalysisAccessor(@Value("${security.session-analysis.url:http://18.232.129.213:8000/analyze_session}") String sessionAnalysisUrl) {
-        this.sessionAnalysisUrl = sessionAnalysisUrl;
+    public SessionAnalysisAccessor(@Value("${security.session-analysis.url:" + DEFAULT_SESSION_ANALYSIS_URL + "}") String sessionAnalysisUrl) {
+        this.sessionAnalysisUrl = normalizeSessionAnalysisUrl(sessionAnalysisUrl);
+        if (!Objects.equals(this.sessionAnalysisUrl, sessionAnalysisUrl)) {
+            log.warn("Normalized security.session-analysis.url from '{}' to '{}'", sessionAnalysisUrl, this.sessionAnalysisUrl);
+        }
+        log.info("Using analyze_session endpoint: {}", this.sessionAnalysisUrl);
     }
 
     public SessionDecision analyzeSession(Map<String, Object> payload, String sessionId) {
@@ -60,8 +69,31 @@ public class SessionAnalysisAccessor {
             }
             return decision;
         } catch (RestClientException ex) {
-            log.warn("analyze_session call failed, keeping local ALLOW decision. sessionId={}", sessionId, ex);
+            log.warn("analyze_session call failed, keeping local ALLOW decision. sessionId={}, url={}", sessionId, sessionAnalysisUrl, ex);
             return null;
+        }
+    }
+
+    private String normalizeSessionAnalysisUrl(String configuredUrl) {
+        if (!StringUtils.hasText(configuredUrl)) {
+            return DEFAULT_SESSION_ANALYSIS_URL;
+        }
+
+        String normalized = configuredUrl.trim();
+        normalized = normalized.replaceFirst("^(https?:)/{3,}", "$1//");
+        if (!normalized.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*")) {
+            normalized = "http://" + normalized.replaceFirst("^/+", "");
+        }
+
+        try {
+            URI uri = URI.create(normalized);
+            if (!StringUtils.hasText(uri.getHost())) {
+                throw new IllegalArgumentException("host missing");
+            }
+            return normalized;
+        } catch (IllegalArgumentException ex) {
+            log.warn("Invalid security.session-analysis.url '{}', falling back to '{}'", configuredUrl, DEFAULT_SESSION_ANALYSIS_URL);
+            return DEFAULT_SESSION_ANALYSIS_URL;
         }
     }
 
