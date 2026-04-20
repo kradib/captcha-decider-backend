@@ -4,4 +4,4 @@ spring:
 
 security:
   session-analysis:
-    url: http://18.232.129.213:8000/analyze_session
+    url: http://172.31.41.159:8000/analyze_session
